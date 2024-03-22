@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import React from "react";
-import View1 from "./view1";
+import Wallet from "./wallet";
 import logo from "../public/4651328-middle.png";
 import { IoNotificationsCircle } from "react-icons/io5";
 import { IoWallet } from "react-icons/io5";
@@ -94,7 +94,7 @@ export default function Home() {
           </ul>
         </header>
         <nav className="flex flex-col items-center justify-center overflow-auto">
-          {selectedIndex === 1 && <View1 />}
+          {selectedIndex === 1 && <Wallet />}
          
         </nav>
       </main>
