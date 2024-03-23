@@ -6,7 +6,6 @@ import {
   getGasPrice,
   getNetworkId,
   getNetworkType,
-  getNetworkName,
 } from "../utils/Web3";
 
 const Wallet: React.FC = () => {
@@ -15,7 +14,6 @@ const Wallet: React.FC = () => {
   const [gasPrice, setGasPrice] = useState<string>("");
   const [networkId, setNetworkId] = useState<number>(0);
   const [networkType, setNetworkType] = useState<string>("");
-  const [networkName, setNetworkName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,9 +32,6 @@ const Wallet: React.FC = () => {
 
         const networkType = await getNetworkType();
         setNetworkType(networkType);
-
-        const networkName = await getNetworkName();
-        setNetworkName(networkName);
 
         setLoading(false);
       } catch (error) {
@@ -90,7 +85,6 @@ const Wallet: React.FC = () => {
           <Detail label="Gas Price" value={`${gasPrice} Gwei`} />
           <Detail label="Network ID" value={networkId.toString()} />
           <Detail label="Network Type" value={networkType} />
-          <Detail label="Network Name" value={networkName} />
         </>
       )}
       <p className="text-red-500">{error}</p>
