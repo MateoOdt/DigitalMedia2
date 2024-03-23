@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  cpwallet:
+    container_name: nextjs_dev
+    image: node
+    working_dir: /usr/src/app
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - "3000:3000"
+    command: sh -c "npm i && npm run dev"
+
+  ethereum-node:
+    image: ethereum/client-go:latest
+    container_name: ethereum_node
+    ports:
+      - "8545:8545"  # JSON-RPC port
+      - "30303:30303"  # Ethereum P2P port
+    volumes:
+      - ethereum_node:/root/.ethereum
+    networks:
+      - ethereum_network
+
+  lodestar-client:
+    image: chainsafe/lodestar:latest
+    container_name: lodestar_client
+    restart: always
+    volumes:
+      - beacon_node:/data
+      - logs:/logs
+      - "./jwtsecret:/jwtsecret"
+    ports:
+      - "9000:9000"  # Libp2p port
+      - "9596:9596"  # REST API port
+    networks:
+      - ethereum_network
+    depends_on:
+      - ethereum-node
+    command: ["beacon", "--dataDir", "/data", "--rest", "--execution.urls", "http://localhost:30303"]
+
+networks:
+  ethereum_network:
+    driver: bridge
+
+volumes:
+  ethereum_node:
+  beacon_node:
+  logs:
