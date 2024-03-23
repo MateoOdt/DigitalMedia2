@@ -37,7 +37,7 @@ services:
       - ethereum_network
     depends_on:
       - ethereum-node
-    command: ["beacon", "--dataDir", "/data", "--rest", "--execution.urls", "http://localhost:30303"]
+    command: ["beacon", "--dataDir", "/data", "--rest", "--execution.urls", "http://localhost:8545"]
 
 networks:
   ethereum_network:

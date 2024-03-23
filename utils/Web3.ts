@@ -3,7 +3,7 @@ import Web3 from "web3";
 let web3: Web3 | undefined;
 let isConnecting: boolean = false;
 
-export const connectWalletByMetamask = async (): Promise<any> => {
+export const connectWalletByMetamask = async (): Promise<string> => {
   try {
     if (isConnecting) {
       throw new Error("Already processing eth_requestAccounts. Please wait.");
@@ -11,7 +11,10 @@ export const connectWalletByMetamask = async (): Promise<any> => {
 
     isConnecting = true;
 
-    if (typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined') {
+    if (
+      typeof window !== "undefined" &&
+      typeof (window as any).ethereum !== "undefined"
+    ) {
       await window.ethereum.request({ method: "eth_requestAccounts" });
       const web3Instance = new Web3(window.ethereum);
       const defaultAccount = await web3Instance.eth.getAccounts();
@@ -25,15 +28,11 @@ export const connectWalletByMetamask = async (): Promise<any> => {
     isConnecting = false;
     throw new Error(`Error connecting wallet: ${error}`);
   }
-}
-
+};
 
 export const initializeWeb3 = async (): Promise<Web3> => {
   if (!web3) {
-    const provider = new Web3.providers.HttpProvider(
-      "https://fluent-quick-gadget.quiknode.pro/9a76620cf31dd8c6e483f4a8c89fe2f934c803a6/"
-    );
-    web3 = new Web3(provider);
+    web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
   }
   return web3;
 };
@@ -93,7 +92,7 @@ export const getBlock = async (hash: string): Promise<any> => {
   } catch (error) {
     throw new Error(`Error getting block: ${error}`);
   }
-}
+};
 
 export const getBlockNumber = async (): Promise<bigint> => {
   try {
@@ -102,7 +101,7 @@ export const getBlockNumber = async (): Promise<bigint> => {
   } catch (error) {
     throw new Error(`Error getting block number: ${error}`);
   }
-}
+};
 
 export const getBlockByNumber = async (number: bigint): Promise<any> => {
   try {
@@ -111,7 +110,7 @@ export const getBlockByNumber = async (number: bigint): Promise<any> => {
   } catch (error) {
     throw new Error(`Error getting block by number: ${error}`);
   }
-}
+};
 
 export const getTransactionReceipt = async (hash: string): Promise<any> => {
   try {
@@ -120,7 +119,7 @@ export const getTransactionReceipt = async (hash: string): Promise<any> => {
   } catch (error) {
     throw new Error(`Error getting transaction receipt: ${error}`);
   }
-}
+};
 
 export const getGasPrice = async (): Promise<string> => {
   try {
@@ -130,7 +129,7 @@ export const getGasPrice = async (): Promise<string> => {
   } catch (error) {
     throw new Error(`Error getting gas price: ${error}`);
   }
-}
+};
 
 export const estimateGas = async (
   from: string,
@@ -149,7 +148,7 @@ export const estimateGas = async (
   } catch (error) {
     throw new Error(`Error estimating gas: ${error}`);
   }
-}
+};
 
 export const getNetworkId = async (): Promise<number> => {
   try {
@@ -158,7 +157,7 @@ export const getNetworkId = async (): Promise<number> => {
   } catch (error) {
     throw new Error(`Error getting network ID: ${error}`);
   }
-}
+};
 
 export const getNetworkType = async (): Promise<string> => {
   try {
@@ -167,7 +166,7 @@ export const getNetworkType = async (): Promise<string> => {
   } catch (error) {
     throw new Error(`Error getting network type: ${error}`);
   }
-}
+};
 
 export const getNetworkName = async (): Promise<string> => {
   try {
@@ -176,26 +175,26 @@ export const getNetworkName = async (): Promise<string> => {
     let networkName: string;
     switch (Number(networkId)) {
       case 1:
-        networkName = 'Mainnet';
+        networkName = "Mainnet";
         break;
       case 3:
-        networkName = 'Ropsten';
+        networkName = "Ropsten";
         break;
       case 4:
-        networkName = 'Rinkeby';
+        networkName = "Rinkeby";
         break;
       case 5:
-        networkName = 'Goerli';
+        networkName = "Goerli";
         break;
       case 42:
-        networkName = 'Kovan';
+        networkName = "Kovan";
         break;
       default:
-        networkName = 'Unknown';
+        networkName = "Unknown";
         break;
     }
     return networkName;
   } catch (error) {
     throw new Error(`Error getting network name: ${error}`);
   }
-}
+};
