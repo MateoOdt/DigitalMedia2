@@ -1,0 +1,20 @@
+# Use Node.js 18 image as the base
+FROM node:18-alpine AS development
+
+# Set the working directory inside the container
+WORKDIR /usr/src/app
+
+# Copy package.json and package-lock.json to the working directory
+COPY package*.json ./
+
+# Install project dependencies
+RUN npm install
+
+# Install Next.js globally
+RUN npm install -g next
+
+# Expose port 3000 for the Next.js development server
+EXPOSE 3000
+
+# Define the default command to run the Next.js development server
+CMD ["npm", "run", "dev"]
