@@ -32,6 +32,7 @@ export const connectWalletByMetamask = async (): Promise<string> => {
 
 export const initializeWeb3 = async (): Promise<Web3> => {
   if (!web3) {
+    // Update to use Ganache RPC URL
     web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
   }
   return web3;
@@ -162,39 +163,33 @@ export const getNetworkId = async (): Promise<number> => {
 export const getNetworkType = async (): Promise<string> => {
   try {
     const web3Instance = await initializeWeb3();
-    return await (web3Instance.eth.net as any).getNetworkType();
-  } catch (error) {
-    throw new Error(`Error getting network type: ${error}`);
-  }
-};
-
-export const getNetworkName = async (): Promise<string> => {
-  try {
-    const web3Instance = await initializeWeb3();
     const networkId = await web3Instance.eth.net.getId();
-    let networkName: string;
+    let networkType: string;
+
     switch (Number(networkId)) {
       case 1:
-        networkName = "Mainnet";
+        networkType = "Mainnet";
         break;
       case 3:
-        networkName = "Ropsten";
+        networkType = "Ropsten";
         break;
       case 4:
-        networkName = "Rinkeby";
+        networkType = "Rinkeby";
         break;
       case 5:
-        networkName = "Goerli";
+        networkType = "Goerli";
         break;
       case 42:
-        networkName = "Kovan";
+        networkType = "Kovan";
         break;
       default:
-        networkName = "Unknown";
+        networkType = "Unknown";
         break;
     }
-    return networkName;
+
+    return networkType;
   } catch (error) {
-    throw new Error(`Error getting network name: ${error}`);
+    console.error("Error getting network type:", error);
+    throw new Error(`Error getting network type: ${error}`);
   }
 };
