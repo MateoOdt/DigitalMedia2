@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   cpwallet:
-    container_name: nextjs_dev
+    container_name: front
     image: node
     working_dir: /usr/src/app
     volumes:
@@ -43,3 +43,4 @@ networks:
 volumes:
   beacon_node:
   logs:
+    

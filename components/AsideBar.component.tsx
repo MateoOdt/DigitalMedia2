@@ -4,14 +4,7 @@ import Image from "next/image"
 import { BsFillHouseFill, BsHousesFill } from "react-icons/bs"
 import { RiArrowDropDownLine } from "react-icons/ri"
 
-const AsideBar = (props: any) => {
-	const [selectedIndex, setSelectedIndex] = useState(1) 
-	const SelectedIndex = () => {
-		
-	}
-	
-	
-
+const AsideBar = (selectedIndex: any, setSelectedIndex: (arg0: number) => void) => {
 	console.log(selectedIndex)
 	return (
 		<aside className=" flex flex-col w-1/4 text-primary-50 gap-y-4">
