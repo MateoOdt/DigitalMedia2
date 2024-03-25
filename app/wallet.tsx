@@ -6,7 +6,11 @@ import {
   getGasPrice,
   getNetworkId,
   getNetworkType,
+  getAccounts,
+  getTransaction,
+  sendTransaction,
 } from "../utils/Web3";
+import TransactionPopup from "./popup";
 
 const Wallet: React.FC = () => {
   const [account, setAccount] = useState<string>("");
@@ -16,6 +20,10 @@ const Wallet: React.FC = () => {
   const [networkType, setNetworkType] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [transactionHash, setTransactionHash] = useState<string | null>(null);
+  const [showTransactionPopup, setShowTransactionPopup] = useState<boolean>(false);
+  const [transactionType, setTransactionType] = useState<"send" | "get">("send");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,16 +51,25 @@ const Wallet: React.FC = () => {
       fetchData();
     }
   }, [account]);
+
+  useEffect(() => {
+    const fetchAllAccounts = async () => {
+      const allAccounts = await getAccounts();
+      setAccounts(allAccounts);
+    };
+    fetchAllAccounts();
+  }, []);
+
   const handleCreateNewWallet = async () => {
     setLoading(true);
     try {
       const newAccount = await createAccount();
       setAccount(newAccount);
-      console.log("create", newAccount);
     } catch (error) {
       setError("Error creating new wallet");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleConnectWallet = async () => {
@@ -60,17 +77,43 @@ const Wallet: React.FC = () => {
     try {
       const connectedAccount = await connectWalletByMetamask();
       setAccount(connectedAccount);
-      console.log("conncet",connectedAccount);
     } catch (error) {
       setError("Error connecting wallet");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  console.log("accountState", account);
+  const handleSendTransaction = () => {
+    setShowTransactionPopup(true);
+    setTransactionType("send");
+  };
+
+  const handleGetTransaction = () => {
+    setShowTransactionPopup(true);
+    setTransactionType("get");
+  };
+
+  const handleTransactionSubmit = async (to: string, value: string) => {
+    setShowTransactionPopup(false);
+    setLoading(true);
+    try {
+      if (transactionType === "send") {
+        const hash = await sendTransaction(account, to, value);
+        setTransactionHash(hash);
+      } else {
+        const transaction = await getTransaction(to);
+        console.log("Transaction:", transaction);
+      }
+    } catch (error) {
+      setError("Error processing transaction");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center p-4 gap-y-2 bg-primary-100">
-      
       <div className="flex gap-x-4 mt-4">
         <Button onClick={handleCreateNewWallet}>Create New Wallet</Button>
         <Button onClick={handleConnectWallet}>Connect Wallet</Button>
@@ -88,6 +131,30 @@ const Wallet: React.FC = () => {
         </>
       )}
       <p className="text-red-500">{error}</p>
+
+      <div className="mt-4">
+        <Button onClick={handleSendTransaction}>Send Transaction</Button>
+        <Button onClick={handleGetTransaction}>Get Transaction</Button>
+      </div>
+
+      {transactionHash && (
+        <p className="text-green-500">Transaction Hash: {transactionHash}</p>
+      )}
+
+      <h2>Accounts ({accounts.length}):</h2>
+      {accounts.map((account, index) => (
+        <div key={index}>
+          <p>{account}</p>
+        </div>
+      ))}
+
+      {showTransactionPopup && (
+        <TransactionPopup
+          onClose={() => setShowTransactionPopup(false)}
+          onSubmit={handleTransactionSubmit}
+          transactionType={transactionType}
+        />
+      )}
     </div>
   );
 };
