@@ -16,7 +16,7 @@ services:
     container_name: ganache
     ports:
       - "8545:8545"  # JSON-RPC port
-    command: ["--accounts", "3", "--defaultBalanceEther", "10000000000000000", "--mnemonic", "myth like bonus scare over problem client lizard pioneer" ]
+    command: ["--accounts", "3", "--defaultBalanceEther", "1000", "--mnemonic", "myth like bonus scare over problem client lizard pioneer" ]
 
   lodestar-client:
     image: chainsafe/lodestar:latest

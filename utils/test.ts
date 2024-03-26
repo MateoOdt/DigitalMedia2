@@ -8,7 +8,7 @@ const privateKey =
   "0xde2eab259f8417d0ab6cf8a6e859e638c595a50450d2b645595c4939cec40591"; // Sender's private key
 //    0x6d40df9d6f7d8f7692cf55fffd15c4c5d2e33656612adb49544fb71a2945c9dd
 
-const transferAmount = web3.utils.toWei("0.00000000001", "ether"); // Amount to transfer in wei
+const transferAmount = web3.utils.toWei("10", "ether"); // Amount to transfer in wei
 
 const test = async () => {
   try {
