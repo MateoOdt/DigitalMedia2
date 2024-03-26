@@ -24,10 +24,7 @@ export default function Home() {
   const [popupType, setPopupType] = useState<"connectAccount" | "transaction">(
     "connectAccount"
   );
-  const togglePopup = (popupType: "connectAccount" | "transaction") => {
-    setPopupType(popupType);
-    setShowPopup((prevShowPopup) => !prevShowPopup);
-  };
+  
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,11 +39,10 @@ export default function Home() {
           setBalance(balance);
           setGasPrice(gasPrice);
           setNetworkId(networkId);
+          setLoading(false);
         }
       } catch (error) {
         setError("Error fetching account data");
-      } finally {
-        setLoading(false);
       }
     };
     fetchData();
@@ -86,10 +82,9 @@ export default function Home() {
     try {
       const newAccount = await Web3Utils.createAccount();
       setAccount(newAccount);
+      setLoading(false);
     } catch (error) {
       setError("Error creating new wallet");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -102,10 +97,9 @@ export default function Home() {
           ? null
           : { address: connectedAccount, privateKey: "" }
       );
+      setLoading(false);
     } catch (error) {
       setError("Error connecting wallet");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -126,10 +120,9 @@ export default function Home() {
         formData.mnemonic
       );
       setAccount(connectedAccount);
+      setLoading(false);
     } catch (error) {
       setError("Error connecting wallet");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -140,22 +133,22 @@ export default function Home() {
 
   const handleTransactionSubmit = async (formData: {
     to: string;
-    value: string;
+    value: number;
   }) => {
     setShowPopup(false);
     setLoading(true);
     try {
       const info = await Web3Utils.sendTransaction(
         account?.address as string,
+        account?.privateKey as string,
         formData.to,
         formData.value
       );
       console.log("Transaction info:", info);
       setTransactionDetails(info);
+      setLoading(false);
     } catch (error) {
       setError("Error processing transaction");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -195,16 +188,45 @@ export default function Home() {
             <Button onClick={handleSendTransaction}>Send Transaction</Button>
           </div>
           <br />
-          <h2>Transaction Details:</h2>
-          {transactionDetails && (
-            <div>
-              {Object.entries(transactionDetails).map(([key, value], index) => (
-                <div key={index}>
-                  <p>{`${key}: ${value}`}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-5 p-2 m-4 border">
+            <h2>Transaction status:</h2>
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <div>
+                {transactionStatus && (
+                  <div>
+                    {Object.entries(transactionStatus).map(
+                      ([key, value], index) => (
+                        <div key={index}>
+                          <p>{`${key}: ${value}`}</p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <h2>Transaction Details:</h2>
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <div>
+                {transactionDetails && (
+                  <div>
+                    {Object.entries(transactionDetails).map(
+                      ([key, value], index) => (
+                        <div key={index}>
+                          <p>{`${key}: ${value}`}</p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <h2>Accounts ({accounts.length}):</h2>
           {accounts.map((acc, index) => (
@@ -223,7 +245,9 @@ export default function Home() {
               formData as { address: string; mnemonic: string }
             );
           } else if (popupType === "transaction") {
-            handleTransactionSubmit(formData as { to: string; value: string });
+            handleTransactionSubmit(
+              formData as unknown as { to: string; value: number }
+            );
           }
         }}
         popupType={popupType}

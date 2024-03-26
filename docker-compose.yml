@@ -3,25 +3,24 @@ version: '3.8'
 services:
   cpwallet:
     container_name: front
-    image: node
+    image: node:18-alpine  # Use a specific version of Node image
     working_dir: /usr/src/app
     volumes:
       - .:/usr/src/app
     ports:
       - "80:3000"
-    command: sh -c "npm i && npm run dev"
+    command: npm run dev  # Simplify command
 
   ganache:
-    image: trufflesuite/ganache-cli
+    image: trufflesuite/ganache-cli:latest
     container_name: ganache
     ports:
       - "8545:8545"  # JSON-RPC port
-    networks:
-      - ethereum_network
+    command: ["--accounts", "3", "--defaultBalanceEther", "10000000000000000", "--mnemonic", "myth like bonus scare over problem client lizard pioneer" ]
 
   lodestar-client:
     image: chainsafe/lodestar:latest
-    container_name: lodestar_client
+    container_name: lodestar
     restart: always
     volumes:
       - beacon_node:/data
@@ -30,11 +29,9 @@ services:
     ports:
       - "9000:9000"  # Libp2p port
       - "9596:9596"  # REST API port
-    networks:
-      - ethereum_network
     depends_on:
       - ganache
-    command: ["beacon", "--dataDir", "/data", "--rest", "--execution.urls", "http://ganache:8545"]
+    command: ["beacon", "--rest", "--execution.urls", "http://ganache:8545"]
 
 networks:
   ethereum_network:
@@ -43,4 +40,3 @@ networks:
 volumes:
   beacon_node:
   logs:
-    

@@ -53,3 +53,6 @@ body {
   background: #555; /* color of the scrollbar handle on hover */
 }
 
+input {
+  color: #000;
+}

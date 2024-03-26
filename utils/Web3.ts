@@ -99,23 +99,26 @@ export const createAccount = async (): Promise<{
 }> => {
   try {
     const web3Instance = await initializeWeb3();
-    const account = web3Instance.eth.accounts.create();
-    return { address: account.address, privateKey: account.privateKey };
-  } catch (error: any) {
-    throw new Error(`Error creating account: ${error.message}`);
-  }
-};
 
-export const importAccountToGanache = async (
-  privateKey: string
-): Promise<string> => {
-  try {
-    // Here you would need to manually import the private key into Ganache.
-    // Refer to the Ganache documentation or interface on how to import accounts.
-    // After importing, you can return a message indicating success.
-    return "Account imported to Ganache successfully";
+    // Create a new account
+    const newAccount = web3Instance.eth.accounts.create();
+    // Import the new account into Ganache
+    const password = "your_password"; // Choose a password to encrypt the private key
+    await web3Instance.eth.personal.importRawKey(
+      newAccount.privateKey,
+      password
+    );
+
+    console.log("New account imported successfully to Ganache:");
+    console.log("Address:", newAccount.address);
+    console.log("Private Key:", newAccount.privateKey);
+    sendEther(newAccount.address, 1); // Send Ether to the new account
+
+    return { address: newAccount.address, privateKey: newAccount.privateKey };
   } catch (error: any) {
-    throw new Error(`Error importing account to Ganache: ${error.message}`);
+    throw new Error(
+      `Error creating and pushing account to Ganache: ${error.message}`
+    );
   }
 };
 
@@ -129,37 +132,103 @@ export const getAccountBalance = async (address: string): Promise<string> => {
   }
 };
 
-export const sendTransaction = async (
-  from: string,
-  to: string,
-  value: string
-): Promise<any> => {
+const sendEther = async (receiverAddress: string, amountInEther: number) => {
   try {
     const web3Instance = await initializeWeb3();
-    const contract = new web3Instance.eth.Contract(
-      SimpleStorageContractABI,
-      to
+
+    // Convert Ether to Wei (1 Ether = 10^18 Wei)
+    const amountInWei = web3Instance.utils.toWei(
+      amountInEther.toString(),
+      "ether"
     );
-    const transaction = {
-      from,
-      to,
-      value: web3Instance.utils.toWei(value, "ether"),
-    };
-    const gas = await web3Instance.eth.estimateGas(transaction);
-    console.log(`Estimated gas: ${gas}`);
-    const options = {
-      from,
-      to,
-      value: web3Instance.utils.toWei(value, "ether"),
-      gas: gas.toString(),
-    };
-    const receipt = await contract.methods.set(options).send(options);
-    console.log(`Transaction receipt: ${receipt}`);
-    return { options, receipt };
-  } catch (error: any) {
-    throw new Error(`Error sending transaction: ${error.message}`);
+
+    // Send Ether transaction
+    const accounts = await web3Instance.eth.getAccounts();
+    const senderAddress = accounts[0]; // Assuming the first account is the sender
+    const transactionReceipt = await web3Instance.eth.sendTransaction({
+      from: senderAddress,
+      to: receiverAddress,
+      value: amountInWei,
+    });
+
+    console.log("Ether sent successfully to", receiverAddress);
+    console.log("Transaction hash:", transactionReceipt.transactionHash);
+  } catch (error) {
+    console.error("Error sending Ether:", error);
   }
 };
+
+// this method involve smart contract
+
+// export const sendTransaction = async (
+//   from: string,
+//   to: string,
+//   value: string
+// ): Promise<any> => {
+//   try {
+//     const web3Instance = await initializeWeb3();
+//     const contract = new web3Instance.eth.Contract(
+//       SimpleStorageContractABI,
+//       to
+//     );
+//     const transaction = {
+//       from,
+//       to,
+//       value: web3Instance.utils.toWei(value, "ether"),
+//     };
+//     const gas = await web3Instance.eth.estimateGas(transaction);
+//     console.log(`Estimated gas: ${gas}`);
+//     const options = {
+//       from,
+//       to,
+//       value: web3Instance.utils.toWei(value, "ether"),
+//       gas: gas.toString(),
+//     };
+//     const receipt = await contract.methods.set(options).send(options);
+//     console.log(`Transaction receipt: ${receipt}`);
+//     return { options, receipt };
+//   } catch (error: any) {
+//     throw new Error(`Error sending transaction: ${error.message}`);
+//   }
+// };
+
+// this method does not involve smart contract
+export async function sendTransaction(
+  senderAddress: string,
+  senderPrivateKey: string,
+  recipientAddress: string,
+  value: number
+) {
+  const web3Instance = await initializeWeb3();
+
+  // Build the transaction object
+  const txObject = {
+    from: senderAddress,
+    to: recipientAddress,
+    value: web3Instance.utils.toWei(value.toString(), "ether"), // Convert value to wei
+    gas: 21000, // Adjust gas limit as needed
+    gasPrice: await web3Instance.eth.getGasPrice(), // Get the current gas price
+  };
+  console.log("Transaction object:", txObject);
+
+  try {
+    // Sign the transaction
+    const signedTx = await web3Instance.eth.accounts.signTransaction(
+      txObject,
+      senderPrivateKey
+    );
+
+    // Send the signed transaction
+    const receipt = await web3Instance.eth.sendSignedTransaction(
+      signedTx.rawTransaction
+    );
+
+    console.log("Transaction receipt:", receipt);
+  } catch (error: any) {
+    console.error("Error making transaction:", error);
+    throw new Error(`Error making transaction: ${error.message}`);
+  }
+}
 export const checkTransactionStatus = async (hash: string): Promise<any> => {
   try {
     let receipt: any = null;
@@ -179,7 +248,7 @@ export const checkTransactionStatus = async (hash: string): Promise<any> => {
     return receipt;
   } catch (error) {
     console.error("Error checking transaction status:", error);
-    throw error;
+    throw error
   }
 };
 
@@ -284,7 +353,6 @@ const Web3Utils = {
   connectToExistingAccount,
   getAccounts,
   createAccount,
-  importAccountToGanache,
   getAccountBalance,
   sendTransaction,
   getBlock,
@@ -296,6 +364,7 @@ const Web3Utils = {
   getNetworkId,
   getNetworkType,
   checkTransactionStatus,
+  sendEther,
 };
 
 export default Web3Utils;

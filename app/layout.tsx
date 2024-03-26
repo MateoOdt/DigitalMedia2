@@ -40,7 +40,7 @@ const RootLayout: React.FC<Props> = ({ children }) => {
       </Head>
       <body className={`flex h-full overflow-hidden bg-primary-100 ${inter.className}`}>
         <AsideBar currentPath={currentPath} menu={menu} />
-        <main className="flex flex-col w-11/12 rounded-3xl bg-primary-300 my-2 h-[98vh]">
+        <main className="flex flex-col w-11/12 rounded-3xl bg-white my-2 h-[98vh]">
           {/* Use max-h-screen and overflow-y-auto to limit height and enable scrolling */}
           <Header />
           {children}

@@ -36,7 +36,7 @@ const AsideBar: React.FC<Props> = ({ currentPath, menu }) => {
                 href={item.link}
                 className={`flex items-center gap-x-4 rounded-s ${
                   currentPath === item.link
-                    ? "text-secondary-50 bg-primary-300 w-11/12 p-2 mx-4"
+                    ? "text-secondary-50 bg-white w-11/12 p-2 mx-4"
                     : "hover:bg-secondary-50 w-full p-2"
                 }`}
               >

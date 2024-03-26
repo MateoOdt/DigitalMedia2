@@ -6,7 +6,7 @@ import { IoNotificationsCircle } from "react-icons/io5";
 
 const Header: React.FC = () => {
   return (
-    <header className="flex flex-row items-center justify-between bg-inherit bg-primary-400 m-4 rounded">
+    <header className="flex flex-row items-center justify-between bg-inherit bg-primary-300 m-4 rounded">
       <div className="flex items-center">
         <Image
           src={logo}
