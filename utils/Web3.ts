@@ -56,7 +56,8 @@ export const initializeWeb3 = async (): Promise<Web3> => {
 };
 
 export const connectToExistingAccount = async (
-  address: string
+  address: string,
+  mnemonic: string
 ): Promise<{ address: string; privateKey: string }> => {
   try {
     const web3Instance = await initializeWeb3();
@@ -68,12 +69,6 @@ export const connectToExistingAccount = async (
     if (!account) {
       throw new Error("Account not found");
     }
-
-    // In a testing environment like Ganache, you can directly extract private keys
-    // Assuming you've started Ganache with the flag --mnemonic <mnemonic_phrase>
-    // You can use the mnemonic to get private keys for accounts
-    const mnemonic =
-      "ceiling behind aware fresh sting praise film inch allow silver gossip tw"; //Ganache mnemonic
     const hdwallet = require("ethereumjs-wallet").hdkey.fromMasterSeed(
       web3Instance.utils.toHex(mnemonic)
     );
@@ -165,23 +160,13 @@ export const sendTransaction = async (
     throw new Error(`Error sending transaction: ${error.message}`);
   }
 };
-
-export const getTransaction = async (hash: string): Promise<any> => {
-  try {
-    const web3Instance = await initializeWeb3();
-    const info = await web3Instance.eth.getTransaction(hash);
-    return info;
-  } catch (error: any) {
-    throw new Error(`Error getting transaction: ${error.message}`);
-  }
-};
-
 export const checkTransactionStatus = async (hash: string): Promise<any> => {
   try {
     let receipt: any = null;
+    console.log("Checking transaction status started...");
     while (!receipt) {
+      console.log("Checking transaction status in progress...");
       const web3Instance = await initializeWeb3();
-
       receipt = await web3Instance.eth.getTransactionReceipt(hash);
       if (!receipt) {
         console.log(
@@ -302,7 +287,6 @@ const Web3Utils = {
   importAccountToGanache,
   getAccountBalance,
   sendTransaction,
-  getTransaction,
   getBlock,
   getBlockNumber,
   getBlockByNumber,

@@ -19,11 +19,15 @@ export default function Home() {
   const [transactionDetails, setTransactionDetails] = useState<any | null>(
     null
   );
+  const [transactionStatus, setTransactionStatus] = useState<string>("");
   const [showPopup, setShowPopup] = useState<boolean>(false);
   const [popupType, setPopupType] = useState<"connectAccount" | "transaction">(
     "connectAccount"
   );
-  const [connectAccountInput, setConnectAccountInput] = useState<string>("");
+  const togglePopup = (popupType: "connectAccount" | "transaction") => {
+    setPopupType(popupType);
+    setShowPopup((prevShowPopup) => !prevShowPopup);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +59,27 @@ export default function Home() {
     };
     fetchAllAccounts();
   }, []);
+
+  useEffect(() => {
+    const checkTransactionStatus = async (hash: string) => {
+      try {
+        let receipt: any = null;
+        while (!receipt) {
+          receipt = await Web3Utils.checkTransactionStatus(hash);
+          setTransactionStatus(receipt);
+          if (!receipt) {
+            await delay(5000);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking transaction status:", error);
+        throw error;
+      }
+    };
+    if (transactionDetails?.receipt?.transactionHash) {
+      checkTransactionStatus(transactionDetails.receipt.transactionHash);
+    }
+  }, [transactionDetails?.receipt?.transactionHash]);
 
   const handleCreateNewWallet = async () => {
     setLoading(true);
@@ -89,11 +114,17 @@ export default function Home() {
     setPopupType("connectAccount");
   };
 
-  const handleConnectAccountSubmit = async (input: string) => {
+  const handleConnectAccountSubmit = async (formData: {
+    address: string;
+    mnemonic: string;
+  }) => {
     setShowPopup(false);
     setLoading(true);
     try {
-      const connectedAccount = await Web3Utils.connectToExistingAccount(input);
+      const connectedAccount = await Web3Utils.connectToExistingAccount(
+        formData.address,
+        formData.mnemonic
+      );
       setAccount(connectedAccount);
     } catch (error) {
       setError("Error connecting wallet");
@@ -107,37 +138,24 @@ export default function Home() {
     setPopupType("transaction");
   };
 
-  const handleTransactionSubmit = async (to: string, value: string) => {
+  const handleTransactionSubmit = async (formData: {
+    to: string;
+    value: string;
+  }) => {
     setShowPopup(false);
     setLoading(true);
     try {
       const info = await Web3Utils.sendTransaction(
-        account?.address || "",
-        to,
-        value
+        account?.address as string,
+        formData.to,
+        formData.value
       );
       console.log("Transaction info:", info);
-      await checkTransactionStatus(info.receipt.transactionHash);
+      setTransactionDetails(info);
     } catch (error) {
       setError("Error processing transaction");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const checkTransactionStatus = async (hash: string) => {
-    try {
-      let receipt: any = null;
-      while (!receipt) {
-        receipt = await Web3Utils.checkTransactionStatus(hash);
-        setTransactionDetails(receipt);
-        if (!receipt) {
-          await delay(5000);
-        }
-      }
-    } catch (error) {
-      console.error("Error checking transaction status:", error);
-      throw error;
     }
   };
 
@@ -197,23 +215,20 @@ export default function Home() {
         </>
       )}
 
-      {showPopup && (
-        <Popup
-          onClose={() => setShowPopup(false)}
-          onSubmit={(input) => {
-            if (popupType === "connectAccount") {
-              handleConnectAccountSubmit(input as string);
-            } else if (popupType === "transaction") {
-              handleTransactionSubmit(
-                (input as { to: string; value: string }).to,
-                (input as { to: string; value: string }).value
-              );
-            }
-          }}
-          popupType={popupType}
-          connectAccountInput={connectAccountInput}
-        />
-      )}
+      <Popup
+        onClose={() => setShowPopup(false)}
+        onSubmit={(formData) => {
+          if (popupType === "connectAccount") {
+            handleConnectAccountSubmit(
+              formData as { address: string; mnemonic: string }
+            );
+          } else if (popupType === "transaction") {
+            handleTransactionSubmit(formData as { to: string; value: string });
+          }
+        }}
+        popupType={popupType}
+        visible={showPopup} // Pass visibility state to Popup
+      />
     </div>
   );
 }
