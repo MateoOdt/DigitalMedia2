@@ -2,44 +2,18 @@ version: '3.8'
 
 services:
   cpwallet:
-    container_name: nextjs_dev
-    image: node
+    container_name: front
+    image: node:18-alpine  # Use a specific version of Node image
     working_dir: /usr/src/app
     volumes:
       - .:/usr/src/app
     ports:
-      - "3000:3000"
-    command: sh -c "npm i && npm run dev"
+      - "80:3000"
+    command: npm run dev  # Simplify command
 
   ganache:
-    image: trufflesuite/ganache-cli
+    image: trufflesuite/ganache-cli:latest
     container_name: ganache
     ports:
       - "8545:8545"  # JSON-RPC port
-    networks:
-      - ethereum_network
-
-  lodestar-client:
-    image: chainsafe/lodestar:latest
-    container_name: lodestar_client
-    restart: always
-    volumes:
-      - beacon_node:/data
-      - logs:/logs
-      - "./jwtsecret:/jwtsecret"
-    ports:
-      - "9000:9000"  # Libp2p port
-      - "9596:9596"  # REST API port
-    networks:
-      - ethereum_network
-    depends_on:
-      - ganache
-    command: ["beacon", "--dataDir", "/data", "--rest", "--execution.urls", "http://ganache:8545"]
-
-networks:
-  ethereum_network:
-    driver: bridge
-
-volumes:
-  beacon_node:
-  logs:
+    command: ["--accounts", "3", "--defaultBalanceEther", "1000", "--mnemonic", "myth like bonus scare over problem client lizard pioneer" ]
