@@ -17,26 +17,3 @@ services:
     ports:
       - "8545:8545"  # JSON-RPC port
     command: ["--accounts", "3", "--defaultBalanceEther", "1000", "--mnemonic", "myth like bonus scare over problem client lizard pioneer" ]
-
-  lodestar-client:
-    image: chainsafe/lodestar:latest
-    container_name: lodestar
-    restart: always
-    volumes:
-      - beacon_node:/data
-      - logs:/logs
-      - "./jwtsecret:/jwtsecret"
-    ports:
-      - "9000:9000"  # Libp2p port
-      - "9596:9596"  # REST API port
-    depends_on:
-      - ganache
-    command: ["beacon", "--rest", "--execution.urls", "http://ganache:8545"]
-
-networks:
-  ethereum_network:
-    driver: bridge
-
-volumes:
-  beacon_node:
-  logs:
