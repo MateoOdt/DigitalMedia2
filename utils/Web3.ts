@@ -1,50 +1,124 @@
 import Web3 from "web3";
 
 let web3: Web3 | undefined;
-let isConnecting: boolean = false;
+
+const SimpleStorageContractABI = [
+  {
+    constant: false,
+    inputs: [
+      {
+        name: "x",
+        type: "uint256",
+      },
+    ],
+    name: "set",
+    outputs: [],
+    payable: false,
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    constant: true,
+    inputs: [],
+    name: "get",
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+      },
+    ],
+    payable: false,
+    stateMutability: "view",
+    type: "function",
+  },
+];
 
 export const connectWalletByMetamask = async (): Promise<string> => {
   try {
-    if (isConnecting) {
-      throw new Error("Already processing eth_requestAccounts. Please wait.");
-    }
-
-    isConnecting = true;
-
-    if (
-      typeof window !== "undefined" &&
-      typeof (window as any).ethereum !== "undefined"
-    ) {
+    if (typeof window !== "undefined" && window.ethereum) {
       await window.ethereum.request({ method: "eth_requestAccounts" });
       const web3Instance = new Web3(window.ethereum);
-      const defaultAccount = await web3Instance.eth.getAccounts();
-      isConnecting = false;
-      return defaultAccount[0];
+      const [defaultAccount] = await web3Instance.eth.getAccounts();
+      return defaultAccount;
     } else {
-      isConnecting = false;
       throw new Error("Metamask not installed");
     }
-  } catch (error) {
-    isConnecting = false;
-    throw new Error(`Error connecting wallet: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error connecting wallet: ${error.message}`);
   }
 };
 
 export const initializeWeb3 = async (): Promise<Web3> => {
   if (!web3) {
-    // Update to use Ganache RPC URL
     web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
   }
   return web3;
 };
 
-export const createAccount = async (): Promise<string> => {
+export const connectToExistingAccount = async (
+  address: string,
+  mnemonic: string
+): Promise<{ address: string; privateKey: string }> => {
   try {
     const web3Instance = await initializeWeb3();
-    const account = web3Instance.eth.accounts.create();
-    return account.address;
-  } catch (error) {
-    throw new Error(`Error creating account: ${error}`);
+    const accounts = await web3Instance.eth.getAccounts();
+    const account = accounts.find(
+      (acc) => acc.toLowerCase() === address.toLowerCase()
+    );
+
+    if (!account) {
+      throw new Error("Account not found");
+    }
+    const hdwallet = require("ethereumjs-wallet").hdkey.fromMasterSeed(
+      web3Instance.utils.toHex(mnemonic)
+    );
+    const wallet = hdwallet
+      .derivePath(`m/44'/60'/0'/0/${accounts.indexOf(account)}`)
+      .getWallet();
+    const privateKey = "0x" + wallet.getPrivateKey().toString("hex");
+
+    console.log(`Connected to account: ${account}`);
+    return { address: account, privateKey: privateKey };
+  } catch (error: any) {
+    throw new Error(`Error connecting to existing account: ${error.message}`);
+  }
+};
+
+export const getAccounts = async (): Promise<string[]> => {
+  try {
+    const web3Instance = await initializeWeb3();
+    return await web3Instance.eth.getAccounts();
+  } catch (error: any) {
+    throw new Error(`Error getting accounts: ${error.message}`);
+  }
+};
+
+export const createAccount = async (): Promise<{
+  address: string;
+  privateKey: string;
+}> => {
+  try {
+    const web3Instance = await initializeWeb3();
+
+    // Create a new account
+    const newAccount = web3Instance.eth.accounts.create();
+    // Import the new account into Ganache
+    const password = "your_password"; // Choose a password to encrypt the private key
+    await web3Instance.eth.personal.importRawKey(
+      newAccount.privateKey,
+      password
+    );
+
+    console.log("New account imported successfully to Ganache:");
+    console.log("Address:", newAccount.address);
+    console.log("Private Key:", newAccount.privateKey);
+    sendEther(newAccount.address, 1); // Send Ether to the new account
+
+    return { address: newAccount.address, privateKey: newAccount.privateKey };
+  } catch (error: any) {
+    throw new Error(
+      `Error creating and pushing account to Ganache: ${error.message}`
+    );
   }
 };
 
@@ -53,36 +127,128 @@ export const getAccountBalance = async (address: string): Promise<string> => {
     const web3Instance = await initializeWeb3();
     const balance = await web3Instance.eth.getBalance(address);
     return web3Instance.utils.fromWei(balance, "ether");
-  } catch (error) {
-    throw new Error(`Error getting account balance: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error getting account balance: ${error.message}`);
   }
 };
 
-export const sendTransaction = async (
-  from: string,
-  to: string,
-  value: string
-): Promise<string> => {
+const sendEther = async (receiverAddress: string, amountInEther: number) => {
   try {
     const web3Instance = await initializeWeb3();
-    const transaction = {
-      from,
-      to,
-      value: web3Instance.utils.toWei(value, "ether"),
-    };
-    const receipt = await web3Instance.eth.sendTransaction(transaction);
-    return receipt.transactionHash.toString();
+
+    // Convert Ether to Wei (1 Ether = 10^18 Wei)
+    const amountInWei = web3Instance.utils.toWei(
+      amountInEther.toString(),
+      "ether"
+    );
+
+    // Send Ether transaction
+    const accounts = await web3Instance.eth.getAccounts();
+    const senderAddress = accounts[0]; // Assuming the first account is the sender
+    const transactionReceipt = await web3Instance.eth.sendTransaction({
+      from: senderAddress,
+      to: receiverAddress,
+      value: amountInWei,
+    });
+
+    console.log("Ether sent successfully to", receiverAddress);
+    console.log("Transaction hash:", transactionReceipt.transactionHash);
   } catch (error) {
-    throw new Error(`Error sending transaction: ${error}`);
+    console.error("Error sending Ether:", error);
   }
 };
 
-export const getTransaction = async (hash: string): Promise<any> => {
+// this method involve smart contract
+
+// export const sendTransaction = async (
+//   from: string,
+//   to: string,
+//   value: string
+// ): Promise<any> => {
+//   try {
+//     const web3Instance = await initializeWeb3();
+//     const contract = new web3Instance.eth.Contract(
+//       SimpleStorageContractABI,
+//       to
+//     );
+//     const transaction = {
+//       from,
+//       to,
+//       value: web3Instance.utils.toWei(value, "ether"),
+//     };
+//     const gas = await web3Instance.eth.estimateGas(transaction);
+//     console.log(`Estimated gas: ${gas}`);
+//     const options = {
+//       from,
+//       to,
+//       value: web3Instance.utils.toWei(value, "ether"),
+//       gas: gas.toString(),
+//     };
+//     const receipt = await contract.methods.set(options).send(options);
+//     console.log(`Transaction receipt: ${receipt}`);
+//     return { options, receipt };
+//   } catch (error: any) {
+//     throw new Error(`Error sending transaction: ${error.message}`);
+//   }
+// };
+
+// this method does not involve smart contract
+export async function sendTransaction(
+  senderAddress: string,
+  senderPrivateKey: string,
+  recipientAddress: string,
+  value: number
+) {
+  const web3Instance = await initializeWeb3();
+
+  // Build the transaction object
+  const txObject = {
+    from: senderAddress,
+    to: recipientAddress,
+    value: web3Instance.utils.toWei(value.toString(), "ether"), // Convert value to wei
+    gas: 21000, // Adjust gas limit as needed
+    gasPrice: await web3Instance.eth.getGasPrice(), // Get the current gas price
+  };
+  console.log("Transaction object:", txObject);
+
   try {
-    const web3Instance = await initializeWeb3();
-    return await web3Instance.eth.getTransaction(hash);
+    // Sign the transaction
+    const signedTx = await web3Instance.eth.accounts.signTransaction(
+      txObject,
+      senderPrivateKey
+    );
+
+    // Send the signed transaction
+    const receipt = await web3Instance.eth.sendSignedTransaction(
+      signedTx.rawTransaction
+    );
+
+    console.log("Transaction receipt:", receipt);
+  } catch (error: any) {
+    console.error("Error making transaction:", error);
+    throw new Error(`Error making transaction: ${error.message}`);
+  }
+}
+export const checkTransactionStatus = async (hash: string): Promise<any> => {
+  try {
+    let receipt: any = null;
+    console.log("Checking transaction status started...");
+    while (!receipt) {
+      console.log("Checking transaction status in progress...");
+      const web3Instance = await initializeWeb3();
+      receipt = await web3Instance.eth.getTransactionReceipt(hash);
+      if (!receipt) {
+        console.log(
+          "Transaction is not yet mined. Checking again in 5 seconds..."
+        );
+        await delay(5000); // Wait for 5 seconds before checking again
+      }
+    }
+    console.log("Transaction mined. Receipt:", receipt);
+    return receipt;
   } catch (error) {
-    throw new Error(`Error getting transaction: ${error}`);
+    console.error("Error checking transaction status:", error);
+    throw error
   }
 };
 
@@ -90,8 +256,8 @@ export const getBlock = async (hash: string): Promise<any> => {
   try {
     const web3Instance = await initializeWeb3();
     return await web3Instance.eth.getBlock(hash);
-  } catch (error) {
-    throw new Error(`Error getting block: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error getting block: ${error.message}`);
   }
 };
 
@@ -99,8 +265,8 @@ export const getBlockNumber = async (): Promise<bigint> => {
   try {
     const web3Instance = await initializeWeb3();
     return await web3Instance.eth.getBlockNumber();
-  } catch (error) {
-    throw new Error(`Error getting block number: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error getting block number: ${error.message}`);
   }
 };
 
@@ -108,8 +274,8 @@ export const getBlockByNumber = async (number: bigint): Promise<any> => {
   try {
     const web3Instance = await initializeWeb3();
     return await web3Instance.eth.getBlock(number.toString());
-  } catch (error) {
-    throw new Error(`Error getting block by number: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error getting block by number: ${error.message}`);
   }
 };
 
@@ -117,8 +283,8 @@ export const getTransactionReceipt = async (hash: string): Promise<any> => {
   try {
     const web3Instance = await initializeWeb3();
     return await web3Instance.eth.getTransactionReceipt(hash);
-  } catch (error) {
-    throw new Error(`Error getting transaction receipt: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error getting transaction receipt: ${error.message}`);
   }
 };
 
@@ -127,8 +293,8 @@ export const getGasPrice = async (): Promise<string> => {
     const web3Instance = await initializeWeb3();
     const gasPrice = await web3Instance.eth.getGasPrice();
     return web3Instance.utils.fromWei(gasPrice, "gwei");
-  } catch (error) {
-    throw new Error(`Error getting gas price: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error getting gas price: ${error.message}`);
   }
 };
 
@@ -146,8 +312,8 @@ export const estimateGas = async (
     };
     const gas = await web3Instance.eth.estimateGas(transaction);
     return gas.toString();
-  } catch (error) {
-    throw new Error(`Error estimating gas: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error estimating gas: ${error.message}`);
   }
 };
 
@@ -155,41 +321,50 @@ export const getNetworkId = async (): Promise<number> => {
   try {
     const web3Instance = await initializeWeb3();
     return Number(await web3Instance.eth.net.getId());
-  } catch (error) {
-    throw new Error(`Error getting network ID: ${error}`);
+  } catch (error: any) {
+    throw new Error(`Error getting network ID: ${error.message}`);
   }
 };
 
 export const getNetworkType = async (): Promise<string> => {
   try {
     const web3Instance = await initializeWeb3();
-    const networkId = await web3Instance.eth.net.getId();
-    let networkType: string;
-
-    switch (Number(networkId)) {
-      case 1:
-        networkType = "Mainnet";
-        break;
-      case 3:
-        networkType = "Ropsten";
-        break;
-      case 4:
-        networkType = "Rinkeby";
-        break;
-      case 5:
-        networkType = "Goerli";
-        break;
-      case 42:
-        networkType = "Kovan";
-        break;
-      default:
-        networkType = "Unknown";
-        break;
-    }
-
-    return networkType;
-  } catch (error) {
-    console.error("Error getting network type:", error);
-    throw new Error(`Error getting network type: ${error}`);
+    const networkId = Number(await web3Instance.eth.net.getId());
+    const networkMap: { [key: number]: string } = {
+      1: "Mainnet",
+      3: "Ropsten",
+      4: "Rinkeby",
+      5: "Goerli",
+      42: "Kovan",
+    };
+    return networkMap[networkId] || "Unknown";
+  } catch (error: any) {
+    throw new Error(`Error getting network type: ${error.message}`);
   }
 };
+
+export async function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+const Web3Utils = {
+  connectWalletByMetamask,
+  initializeWeb3,
+  connectToExistingAccount,
+  getAccounts,
+  createAccount,
+  getAccountBalance,
+  sendTransaction,
+  getBlock,
+  getBlockNumber,
+  getBlockByNumber,
+  getTransactionReceipt,
+  getGasPrice,
+  estimateGas,
+  getNetworkId,
+  getNetworkType,
+  checkTransactionStatus,
+  sendEther,
+};
+
+export default Web3Utils;

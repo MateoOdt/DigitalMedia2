@@ -1,103 +1,277 @@
 "use client";
-import Image from "next/image";
-import React from "react";
-import Wallet from "./wallet";
-import logo from "../public/4651328-middle.png";
-import { IoNotificationsCircle } from "react-icons/io5";
-import { IoWallet } from "react-icons/io5";
+import React, { useEffect, useState } from "react";
+import Popup from "@/components/Popup"; // Adjust the path as per your project structure
+import Web3Utils, { delay } from "../utils/Web3";
+
+interface Account {
+  address: string;
+  privateKey: string;
+}
 
 export default function Home() {
-  const [selectedIndex, setSelectedIndex] = React.useState(1);
-  const menu = [
-    {
-      name: "Wallet",
-      icon: <IoWallet />,
-      index: 1,
-    },
-  ];
+  const [account, setAccount] = useState<Account | null>(null);
+  const [balance, setBalance] = useState<string>("");
+  const [gasPrice, setGasPrice] = useState<string>("");
+  const [networkId, setNetworkId] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [transactionDetails, setTransactionDetails] = useState<any | null>(
+    null
+  );
+  const [transactionStatus, setTransactionStatus] = useState<string>("");
+  const [showPopup, setShowPopup] = useState<boolean>(false);
+  const [popupType, setPopupType] = useState<"connectAccount" | "transaction">(
+    "connectAccount"
+  );
+  
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        if (account) {
+          const [balance, gasPrice, networkId] = await Promise.all([
+            Web3Utils.getAccountBalance(account.address),
+            Web3Utils.getGasPrice(),
+            Web3Utils.getNetworkId(),
+          ]);
+          setBalance(balance);
+          setGasPrice(gasPrice);
+          setNetworkId(networkId);
+          setLoading(false);
+        }
+      } catch (error) {
+        setError("Error fetching account data");
+      }
+    };
+    fetchData();
+  }, [account]);
+
+  useEffect(() => {
+    const fetchAllAccounts = async () => {
+      const allAccounts = await Web3Utils.getAccounts();
+      setAccounts(allAccounts);
+    };
+    fetchAllAccounts();
+  }, []);
+
+  useEffect(() => {
+    const checkTransactionStatus = async (hash: string) => {
+      try {
+        let receipt: any = null;
+        while (!receipt) {
+          receipt = await Web3Utils.checkTransactionStatus(hash);
+          setTransactionStatus(receipt);
+          if (!receipt) {
+            await delay(5000);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking transaction status:", error);
+        throw error;
+      }
+    };
+    if (transactionDetails?.receipt?.transactionHash) {
+      checkTransactionStatus(transactionDetails.receipt.transactionHash);
+    }
+  }, [transactionDetails?.receipt?.transactionHash]);
+
+  const handleCreateNewWallet = async () => {
+    setLoading(true);
+    try {
+      const newAccount = await Web3Utils.createAccount();
+      setAccount(newAccount);
+      setLoading(false);
+    } catch (error) {
+      setError("Error creating new wallet");
+    }
+  };
+
+  const handleConnectAccountByMetaMask = async () => {
+    setLoading(true);
+    try {
+      const connectedAccount = await Web3Utils.connectWalletByMetamask();
+      setAccount((prevAccount) =>
+        prevAccount?.address === connectedAccount
+          ? null
+          : { address: connectedAccount, privateKey: "" }
+      );
+      setLoading(false);
+    } catch (error) {
+      setError("Error connecting wallet");
+    }
+  };
+
+  const handleConnectAccount = () => {
+    setShowPopup(true);
+    setPopupType("connectAccount");
+  };
+
+  const handleConnectAccountSubmit = async (formData: {
+    address: string;
+    mnemonic: string;
+  }) => {
+    setShowPopup(false);
+    setLoading(true);
+    try {
+      const connectedAccount = await Web3Utils.connectToExistingAccount(
+        formData.address,
+        formData.mnemonic
+      );
+      setAccount(connectedAccount);
+      setLoading(false);
+    } catch (error) {
+      setError("Error connecting wallet");
+    }
+  };
+
+  const handleSendTransaction = () => {
+    setShowPopup(true);
+    setPopupType("transaction");
+  };
+
+  const handleTransactionSubmit = async (formData: {
+    to: string;
+    value: number;
+  }) => {
+    setShowPopup(false);
+    setLoading(true);
+    try {
+      const info = await Web3Utils.sendTransaction(
+        account?.address as string,
+        account?.privateKey as string,
+        formData.to,
+        formData.value
+      );
+      console.log("Transaction info:", info);
+      setTransactionDetails(info);
+      setLoading(false);
+    } catch (error) {
+      setError("Error processing transaction");
+    }
+  };
+
   return (
-    <div className="flex bg-primary-50 h-screen">
-      <aside className=" flex flex-col w-auto text-primary-50 gap-y-4">
-        <div className="flex flex-row items-center h-fit p-4 gap-x-2 bg-primary-100">
-          <span>
-            <Image
-              src="https://www.svgrepo.com/show/382106/male-avatar-boy-face-man-user-9.svg"
-              alt="user avatar"
-              width={60}
-              height={60}
-              priority
-            />
-          </span>
-          <p className="basis-2/4 text-primary-300 hidden md:flex">
-            <code>username</code>
-          </p>
-        </div>
-        <div>
-          <menu type="toolbar" className="text-primary-300 ml-6">
-            <ol className="flex flex-col">
-              {menu.map((item) => (
-                <li key={item.index}>
-                  <div
-                    className={
-                      selectedIndex === item.index
-                        ? "rounded-ee-full h-2 shadow-t"
-                        : "hidden"
-                    }
-                  />
-                  <button
-                    className={`flex items-center gap-x-4 rounded-s 
-              ${
-                selectedIndex === item.index
-                  ? "text-secondary-50 bg-primary-300 w-11/12  p-2 mx-4"
-                  : "hover:bg-secondary-50 w-full  p-2"
-              }`}
-                    onClick={() => setSelectedIndex(item.index)}
-                  >
-                    {item.icon}
-                    <p className=" hidden md:flex">{item.name}</p>
-                  </button>
-                  <div
-                    className={
-                      selectedIndex === item.index
-                        ? "rounded-se-full h-2 shadow-t"
-                        : "hidden"
-                    }
-                  />
-                </li>
-              ))}
-            </ol>
-          </menu>
-        </div>
-      </aside>
-      <main className="flex flex-col w-11/12  bg-primary-300 rounded-3xl m-3 ml-0">
-        <header className="flex flex-row items-center justify-between bg-inherit bg-primary-400 m-4 rounded">
-          <span>
-            <Image
-              src={logo}
-              alt="eSmartLock Logo"
-              className="dark:invert"
-              width={50}
-              height={50}
-              priority
-              style={{ borderRadius: "50%" }}
-            />
-          </span>
-          <ul className="flex flex-row item-center justify-evenly space-x-5">
-            
-            <li className="flex flex-col">
-              <IoNotificationsCircle size={35} />
-              <span className="absolute inline-flex h-3 w-3 place-self-end">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary-50 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-secondary-100"></span>
-              </span>
-            </li>
-          </ul>
-        </header>
-        <nav className="flex flex-col items-center justify-center overflow-auto">
-          {selectedIndex === 1 && <Wallet />}
-         
-        </nav>
-      </main>
+    <div className="flex flex-col items-center overflow-auto text-primary-50">
+      {!showPopup && (
+        <>
+          <div className="flex gap-x-4 mt-4">
+            <Button onClick={handleCreateNewWallet}>Create New Wallet</Button>
+            <Button onClick={handleConnectAccountByMetaMask}>
+              Connect Wallet
+            </Button>
+            <Button onClick={handleConnectAccount}>Connect Account</Button>
+          </div>
+
+          <h2>Account Details:</h2>
+          {loading ? (
+            <p>Loading...</p>
+          ) : (
+            <>
+              <Detail
+                label="Account Address"
+                value={account ? account.address : ""}
+              />
+              <Detail
+                label="Private Key"
+                value={account ? account.privateKey : ""}
+              />
+              <Detail label="Account Balance" value={`${balance} ETH`} />
+              <Detail label="Gas Price" value={`${gasPrice} Gwei`} />
+              <Detail label="Network ID" value={networkId.toString()} />
+            </>
+          )}
+          {error && <p className="text-red-500">{error}</p>}
+
+          <div className="mt-4">
+            <Button onClick={handleSendTransaction}>Send Transaction</Button>
+          </div>
+          <br />
+          <div className="flex gap-5 p-2 m-4 border">
+            <h2>Transaction status:</h2>
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <div>
+                {transactionStatus && (
+                  <div>
+                    {Object.entries(transactionStatus).map(
+                      ([key, value], index) => (
+                        <div key={index}>
+                          <p>{`${key}: ${value}`}</p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <h2>Transaction Details:</h2>
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <div>
+                {transactionDetails && (
+                  <div>
+                    {Object.entries(transactionDetails).map(
+                      ([key, value], index) => (
+                        <div key={index}>
+                          <p>{`${key}: ${value}`}</p>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <h2>Accounts ({accounts.length}):</h2>
+          {accounts.map((acc, index) => (
+            <div key={index}>
+              <p>{acc}</p>
+            </div>
+          ))}
+        </>
+      )}
+
+      <Popup
+        onClose={() => setShowPopup(false)}
+        onSubmit={(formData) => {
+          if (popupType === "connectAccount") {
+            handleConnectAccountSubmit(
+              formData as { address: string; mnemonic: string }
+            );
+          } else if (popupType === "transaction") {
+            handleTransactionSubmit(
+              formData as unknown as { to: string; value: number }
+            );
+          }
+        }}
+        popupType={popupType}
+        visible={showPopup} // Pass visibility state to Popup
+      />
     </div>
   );
 }
+
+const Button: React.FC<{ onClick: () => void; children?: React.ReactNode }> = ({
+  onClick,
+  children,
+}) => (
+  <button className="bg-blue-500 text-white rounded p-2" onClick={onClick}>
+    {children}
+  </button>
+);
+
+const Detail: React.FC<{ label: string; value: string }> = ({
+  label,
+  value,
+}) => (
+  <div className="flex flex-row items-center">
+    <h3>{label}: </h3>
+    <p>{value}</p>
+  </div>
+);
